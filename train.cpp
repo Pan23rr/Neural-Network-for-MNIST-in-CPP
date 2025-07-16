@@ -9,7 +9,7 @@ using namespace std;
 
 
 const int MAXN = 6e4;
-double image[MAXN][30][30];
+vector<vector<vector<double>>> image(MAXN,vector<vector<double>> (30, vector<double> (30,0)));
 unsigned int num, magic, rows, cols;
 int currBatch=0;
 unsigned int label[MAXN];
@@ -44,6 +44,29 @@ void input() {
     }
 }
 
+vector<vector<double>> Images;
+
+void flattenImage(){
+    for(int i=0;i<6e4;i++){
+        vector<double> singleImage;
+        for(int j=0;j<30;j++){
+            for(int k=0;k<30;k++){
+                singleImage.push_back(image[i][j][k]);
+            }
+        }
+        Images.push_back(singleImage);
+    }
+}
+
+void Transpose(vector<vector<double>> & Mat){
+    vector<vector<double>> Transposed(Mat[0].size(),vector<double> (Mat.size(),0));
+    for(int r=0;r<Mat.size();r++){
+        for(int c=0;c<Mat[0].size();c++){
+            Transposed[c][r]=Mat[r][c];
+        }
+    }
+    Mat=Transposed;
+}
 
 
 class Neuron{    
@@ -124,14 +147,42 @@ class Layer {
     uint32_t size(){
         return neurons.size();
     }
+    vector<vector<double>> weights(){
+        vector<vector<double>> (neurons[0].weight().size());
 
+    }
     Neuron &operator[](size_t index){
         return neurons[index];
     }
 };
 
+vector<vector<double>> MatMul(vector<vector<double>> &A,vector<vector<double>> &B ){
+    vector<vector<double>> Result(A.size(),vector<double> (B[0].size(),0.0));
+    int first=A.size(),second=A[0].size(),third=B[0].size();
+    for(int i=0;i<first;i++){
+        for(int j=0;j<third;j++){
+            for(int k=0;k<second;k++){
+                Result[i][j]+=(A[i][k]*B[k][j]);
+            }
+        }
+    }
+    return Result;
+}
 
 
+vector<vector<double>> LayerActivation(vector<vector<double>> Input,Layer layer){
+    vector<vector<double>> Mat;
+    for(int n=0;n<layer.size();n++){
+        Mat.push_back(layer[n].weight());
+    }
+    Transpose(Mat);
+    vector<vector<double>> Result=MatMul(Input,Mat);
+    return Result;
+}
+
+void setActivations(vector<vector<double>> &activations, vector<vector<int>> Inp, int layer){
+    
+}
 
 class NeuralNetwork{
     vector<Layer> model;
@@ -146,42 +197,17 @@ class NeuralNetwork{
         }
         vector<vector<double>> feedForward(uint32_t batchSize=1000){
             vector<vector<double>> activations(model.size());
-
+            vector<vector<double>> currInput;
             //Processing for the firstLayer
+
             for(int datapoint=currBatch;datapoint<MAXN && datapoint<currBatch+batchSize;datapoint++){
-                int firstLayersize=model[0].size();
-                for(int neuron=0;neuron<firstLayersize;neuron++){
-                    vector<double> weights=model[0][neuron].weight();
-                    double currActivation=0.0;
-                     for(int x=0;x<30;x++){
-                    
-                        for(int y=0;y<30;y++){
-                            currActivation+=max(0.0,weights[neuron]*image[datapoint][x][y]);
-                        }
-                
-                    }
-                    currActivation+=model[0].biases();
-                    currActivation=currActivation/(firstLayersize*1.0);
-                    activations[0].push_back(currActivation);
-                }
+                currInput.push_back(Images[datapoint]);
             }
-
-
+            currInput=LayerActivation(currInput,model[0]);
+            setActivations(activations,currInput,0);
             //Applying Feed Forward for the subsequent layers with Relu
             for(int layer=1;layer<model.size();layer++){
-                vector<double> Input=activations[layer-1];
-                uint32_t layerSize=model[layer].size();
-                for(uint32_t neuron;neuron<layerSize;neuron++){
-                    double currActivation=0.0;
-                    vector<double> weights=model[0][neuron].weight();
-                    for(int i=0;i<Input.size();i++){
-                        currActivation+=(weights[i]*Input[i]);
-                    }
-                    currActivation+=(model[layer].biases());
-                    currActivation/=(Input.size()*1.0);
-                    currActivation=max(0.0,currActivation);
-                    activations[layer].push_back(currActivation);
-                }
+                currInput=LayerActivation(currInput,model[layer]);
             }
 
             return activations;
@@ -200,6 +226,6 @@ class NeuralNetwork{
         double getLoss(double probability){
             return -log(probability);
         }
-        
+
 
 };
