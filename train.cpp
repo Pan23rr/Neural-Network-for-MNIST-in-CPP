@@ -23,7 +23,7 @@ unsigned int in(ifstream& icin, unsigned int size) {
 }
 void input() {
 	ifstream icin;
-	icin.open("C:/Users/Asus/Desktop/NN/data/train-images-idx3-ubyte", ios::binary);
+	icin.open("FileLocation", ios::binary);
 	magic = in(icin, 4), num = in(icin, 4), rows = in(icin, 4), cols = in(icin, 4);
 	for (int i = 0; i < num; i++) {
 		for (int x = 0; x < rows; x++) {
@@ -34,7 +34,7 @@ void input() {
 		}
 	}
 	icin.close();
-	icin.open("C:/Users/Asus/Desktop/NN/data/train-labels-idx1-ubyte", ios::binary);
+	icin.open("FileLocation", ios::binary);
 	magic = in(icin, 4), num = in(icin, 4);
 	for (int i = 0; i < num; i++) {
 		correctLabel[i] = in(icin, 1);
@@ -208,7 +208,9 @@ public:
 
 	vector<vector<int>> labels(int batchSize, int classSize=10) {
 		vector<vector<int>> label;
+        //if(currBatch>59967) cout<<"REACHED";
 		for(int image=currBatch; image<Images.size() && image<currBatch+batchSize; image++) {
+            //if(image>59967) cout<<"REACHED "<<image<<endl;
 			vector<int> t (classSize,0);
 			t[correctLabel[image]]=1;
 			label.push_back(t);
@@ -239,6 +241,7 @@ public:
 		vector<vector<vector<double>>> activations(model.size());
 
 		vector<vector<double>> currInput(batchSize);
+        
 		for (int datapoint = currBatch; datapoint < Images.size() && datapoint < currBatch + batchSize; datapoint++) {
 			currInput[datapoint - currBatch] = Images[datapoint];
 		}
@@ -378,12 +381,13 @@ public:
 	}
 
 
-	void train(int epochs) {
+	void train(vector<Layer> &best) {
 		int batch = 64;
 		for (currBatch = 0; currBatch < num; currBatch += batch) {
+            //cout<<"TEST "<<currBatch;
 			vector<vector<int>> trueY = labels(batch);
-			vector<int> actualLabels(batch);
-			for (int j = 0; j < batch; ++j) {
+			vector<int> actualLabels(trueY.size());
+			for (int j = 0; j < trueY.size(); ++j) {
 				for (int k = 0; k < 10; ++k) {
 					if (trueY[j][k] == 1) {
 						actualLabels[j] = k;
@@ -391,13 +395,10 @@ public:
 					}
 				}
 			}
-
-			vector<vector<vector<double>>> currActivations = FeedForward(batch);
-			vector<vector<double>> predY = Probabilities(currActivations.back());
-			vector<vector<double>> LastlayerError = cost(predY, trueY);
-
-			backPropagate(batch, LastlayerError, currActivations);
-
+			vector<vector<vector<double>>> currActivations = FeedForward(trueY.size());
+            vector<vector<double>> predY = Probabilities(currActivations.back());
+            vector<vector<double>> LastlayerError = cost(predY, trueY);
+			backPropagate(trueY.size(), LastlayerError, currActivations);
 			double totalLoss = 0.0;
 			for (int j = 0; j < predY.size(); ++j) {
 				totalLoss -= log(max(predY[j][actualLabels[j]], 1e-15));
@@ -410,21 +411,50 @@ public:
 				if (predicted == actualLabels[j]) correct++;
 			}
 			double accuracy = (correct * 100.0) / batch;
-
+            if(accuracy>MAX_ACCURACY){
+                best=model;
+                MAX_ACCURACY=accuracy;
+            }
 			cout << "Batch " << (currBatch / batch + 1) << " / " << num/64<< " -> ";
 			cout << "Loss: " << avgLoss << " | Accuracy: " << fixed << setprecision(2) << accuracy << "%\n";
 		}
-        cout<<"CRASH";
 	}
 };
+
+
+
+
+
+void saveModel( vector<Layer>& Best, string filename) {
+    ofstream fout(filename);
+
+    for (int i = 0; i < Best.size(); ++i) {
+        vector<double> bias = Best[i].biases();
+        for (double b : bias) fout << b << " ";
+        fout<<"\n";
+        vector<vector<double>> weights = Best[i].weights(); 
+        for (const auto& row : weights) {
+            for (double w : row) fout << w << " ";
+            fout << "\n";
+        }
+        fout << "\n";
+    }
+
+    fout.close();
+}
+
+
+
 
 int main() {
 	srand(time(0));
 	input();
 	flattenImage();
-    cout<<num<<endl;
+    vector<Layer> Best;
+    //NeuralNetwork maxAccuracy(1,{0},{0});
 	NeuralNetwork train(3, {100,50,10}, {784,100,50});
-	train.train(50);
+	train.train(Best);
     cout<<"======Finished training the Neural Network======\n";
     cout<<"----Maximum Accuracy obtained: "<<MAX_ACCURACY<<" ----";
+    saveModel(Best,"model.txt");
 }
