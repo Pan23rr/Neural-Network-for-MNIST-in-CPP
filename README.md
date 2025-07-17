@@ -8,12 +8,13 @@ This project is a simple yet complete implementation of a Feedforward Neural Net
 
 ## 🚀 Features
 
-- Loads and processes the MNIST dataset
+- Loads and processes the Fashion MNIST dataset
 - Implements:
-  - Sigmoid and Softmax activations
+  - ReLu and Softmax activations
   - Categorical cross-entropy loss
   - Batch training
-  - Gradient descent with learning rate tuning
+  - Gradient descent
+  - Manual Backpropagation algorithm
 - Custom training and testing loops
 - Accuracy and loss tracking per batch
 - Built-in benchmarking system
@@ -41,23 +42,20 @@ This project is a simple yet complete implementation of a Feedforward Neural Net
 
 ---
 
+
+## 📟 Sample Output:
+
+![Sample Output](images/result.png)
+
 ## ⚙️ How to Build and Run
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/nn-cpp-from-scratch.git
-cd nn-cpp-from-scratch
+git clone https://github.com/Pan23rr/Neural-Network-for-MNIST-in-CPP.git
+cd Neural-Network-for-MNIST-in-CPP
 
 # Compile (Linux example)
-g++ -O2 -std=c++17 train.cpp -o train
+g++ train.cpp -o train.exe
 
 # Run training
-./train
-
-
-
-
-
-#Sample Output
-
-![Sample Output](images/result.png)
+./train.exe
