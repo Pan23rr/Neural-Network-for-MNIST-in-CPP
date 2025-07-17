@@ -3,229 +3,455 @@
 using namespace std;
 
 
-
-
-
-
+double MAX_ACCURACY=0.0;
 
 const int MAXN = 6e4;
-vector<vector<vector<double>>> image(MAXN,vector<vector<double>> (30, vector<double> (30,0)));
+vector<vector<vector<double>>> image(MAXN, vector<vector<double>>(28, vector<double>(28, 0)));
 unsigned int num, magic, rows, cols;
 int currBatch=0;
-unsigned int label[MAXN];
+unsigned int correctLabel[MAXN];
 unsigned int in(ifstream& icin, unsigned int size) {
-    unsigned int ans = 0;
-    for (int i = 0; i < size; i++) {
-        unsigned char x;
-        icin.read((char*)&x, 1);
-        unsigned int temp = x;
-        ans <<= 8;
-        ans += temp;
-    }
-    return ans;
+	unsigned int ans = 0;
+	for (int i = 0; i < size; i++) {
+		unsigned char x;
+		icin.read((char*)&x, 1);
+		unsigned int temp = x;
+		ans <<= 8;
+		ans += temp;
+	}
+	return ans;
 }
 void input() {
-    ifstream icin;
-    icin.open("C:/Users/Asus/Desktop/NN/data/train-images-idx3-ubyte", ios::binary);
-    magic = in(icin, 4), num = in(icin, 4), rows = in(icin, 4), cols = in(icin, 4);
-    for (int i = 0; i < num; i++) {
-        for (int x = 0; x < rows; x++) {
-            for (int y = 0; y < cols; y++) {
-                image[i][x][y] = in(icin, 1);
-                image[i][x][y]/=(255*1.0);
-            }
-        }
-    }
-    icin.close();
-    icin.open("C:/Users/Asus/Desktop/NN/data/train-labels-idx1-ubyte", ios::binary);
-    magic = in(icin, 4), num = in(icin, 4);
-    for (int i = 0; i < num; i++) {
-        label[i] = in(icin, 1);
-    }
+	ifstream icin;
+	icin.open("C:/Users/Asus/Desktop/NN/data/train-images-idx3-ubyte", ios::binary);
+	magic = in(icin, 4), num = in(icin, 4), rows = in(icin, 4), cols = in(icin, 4);
+	for (int i = 0; i < num; i++) {
+		for (int x = 0; x < rows; x++) {
+			for (int y = 0; y < cols; y++) {
+				image[i][x][y] = in(icin, 1);
+				image[i][x][y]/=(255*1.0);
+			}
+		}
+	}
+	icin.close();
+	icin.open("C:/Users/Asus/Desktop/NN/data/train-labels-idx1-ubyte", ios::binary);
+	magic = in(icin, 4), num = in(icin, 4);
+	for (int i = 0; i < num; i++) {
+		correctLabel[i] = in(icin, 1);
+	}
 }
 
 vector<vector<double>> Images;
 
-void flattenImage(){
-    for(int i=0;i<6e4;i++){
-        vector<double> singleImage;
-        for(int j=0;j<30;j++){
-            for(int k=0;k<30;k++){
-                singleImage.push_back(image[i][j][k]);
-            }
-        }
-        Images.push_back(singleImage);
-    }
-}
-
-void Transpose(vector<vector<double>> & Mat){
-    vector<vector<double>> Transposed(Mat[0].size(),vector<double> (Mat.size(),0));
-    for(int r=0;r<Mat.size();r++){
-        for(int c=0;c<Mat[0].size();c++){
-            Transposed[c][r]=Mat[r][c];
-        }
-    }
-    Mat=Transposed;
+void flattenImage() {
+	Images.clear();
+	for (int i = 0; i < 6e4; i++) {
+		vector<double> singleImage;
+		for (int j = 0; j < 28; j++) {
+			for (int k = 0; k < 28; k++) {
+				singleImage.push_back(image[i][j][k]);
+			}
+		}
+		Images.push_back(singleImage);
+	}
 }
 
 
-class Neuron{    
-
-   vector<double> weights;
 
 
-    void generateRandomWeights(){
-        uint32_t inputs = weights.size();
-        
-        for(uint32_t inp=0 ; inp < inputs ; inp++ ){
-            static default_random_engine eng ;
-            static uniform_int_distribution<> dis (-1e7 , 1e7) ;
-            weights [inp] = dis (eng) ;  
-        }
-    }
-   public:
-    Neuron ( uint32_t inputSize ) {
-        weights = std::vector <double> (inputSize) ;
-        generateRandomWeights() ;
-    }
-    
-double relu ( double input ) {
-        return max(0.0 , input) ;
-    } 
+class Neuron {
 
- double getActivation ( double input ) {
-        return relu(input) ;
-    }
+	vector<double> weights;
 
-    vector<double> weight(){
-        return weights;
-    }
+
+	void generateRandomWeights() {
+		uint32_t inputs = weights.size();
+		for(uint32_t inp = 0; inp < inputs; inp++) {
+			static std::default_random_engine eng(std::random_device{}());
+			// Better initialization for ReLU networks
+			uniform_real_distribution<double> dis(-sqrt(2.0 / inputs), sqrt(2.0 / inputs));
+			weights[inp] = dis(eng);
+		}
+	}
+public:
+	Neuron ( uint32_t inputSize ) {
+		weights = std::vector <double> (inputSize) ;
+		generateRandomWeights() ;
+	}
+
+	double relu ( double input ) {
+		return max(0.0, input) ;
+	}
+
+	double getActivation ( double input ) {
+		return relu(input) ;
+	}
+
+	vector<double> weight() {
+		return weights;
+	}
+	void updateW(vector<double> newW) {
+		weights=newW;
+	}
 };
 
 
 
 class Layer {
-    
-    vector<Neuron> neurons;
-    double bias;
 
-    void generateNeurons( uint32_t &layerSize, uint32_t &inputSize){
-
-        for(uint32_t neuron=0; neuron < layerSize; neuron++ ){
-            neurons [neuron] = Neuron (inputSize);
-        }
-    }
-
-    void generateBias(){
-        default_random_engine e;
-        uniform_real_distribution<> dis(1e-5, 1e5);
-        bias=dis(e);
-    }
-    
-    public:
-
-    Layer(uint32_t layerSize, uint32_t inputSize){
-        neurons=vector<Neuron> (layerSize);
-        generateNeurons(layerSize,inputSize);
-        generateBias();
-    }
-
-    double getActivation( vector<double> inputs){
-        double currActivation=0.0;
-
-        for(Neuron &neuron: neurons){
-            double neuronActivation=0.0;
-            for(double &input: inputs){
-                neuronActivation=neuronActivation+neuron.getActivation(input);
-            }
-            currActivation+=neuronActivation;
-        }
-    }
-    double biases(){
-        return bias;
-    }
-    uint32_t size(){
-        return neurons.size();
-    }
-    vector<vector<double>> weights(){
-        vector<vector<double>> (neurons[0].weight().size());
-
-    }
-    Neuron &operator[](size_t index){
-        return neurons[index];
-    }
-};
-
-vector<vector<double>> MatMul(vector<vector<double>> &A,vector<vector<double>> &B ){
-    vector<vector<double>> Result(A.size(),vector<double> (B[0].size(),0.0));
-    int first=A.size(),second=A[0].size(),third=B[0].size();
-    for(int i=0;i<first;i++){
-        for(int j=0;j<third;j++){
-            for(int k=0;k<second;k++){
-                Result[i][j]+=(A[i][k]*B[k][j]);
-            }
-        }
-    }
-    return Result;
-}
+	vector<Neuron> neurons;
+	vector<double> bias;
 
 
-vector<vector<double>> LayerActivation(vector<vector<double>> Input,Layer layer){
-    vector<vector<double>> Mat;
-    for(int n=0;n<layer.size();n++){
-        Mat.push_back(layer[n].weight());
-    }
-    Transpose(Mat);
-    vector<vector<double>> Result=MatMul(Input,Mat);
-    return Result;
-}
+	void generateNeurons( uint32_t &layerSize, uint32_t &inputSize) {
 
-void setActivations(vector<vector<double>> &activations, vector<vector<int>> Inp, int layer){
-    
-}
+		for(uint32_t neuron=0; neuron < layerSize; neuron++ ) {
+			neurons.emplace_back (inputSize);
+		}
+	}
 
-class NeuralNetwork{
-    vector<Layer> model;
-    public:
-        NeuralNetwork(uint32_t layers, vector<uint32_t> neuronCount ,vector<uint32_t> layerSize){
-            model=vector<Layer> (layers);
-            for(int layer=0;layer<layers;layer++){
-
-                model[layer]= Layer(neuronCount[layer], layerSize[layer]);
-            
-            }
-        }
-        vector<vector<double>> feedForward(uint32_t batchSize=1000){
-            vector<vector<double>> activations(model.size());
-            vector<vector<double>> currInput;
-            //Processing for the firstLayer
-
-            for(int datapoint=currBatch;datapoint<MAXN && datapoint<currBatch+batchSize;datapoint++){
-                currInput.push_back(Images[datapoint]);
-            }
-            currInput=LayerActivation(currInput,model[0]);
-            setActivations(activations,currInput,0);
-            //Applying Feed Forward for the subsequent layers with Relu
-            for(int layer=1;layer<model.size();layer++){
-                currInput=LayerActivation(currInput,model[layer]);
-            }
-
-            return activations;
-        }
+	void generateBias() {
+		default_random_engine e(random_device{}());
+		uniform_real_distribution<> dis(-0.5, 0.5);
+		bias.resize(neurons.size());
+		for (double &b : bias) b = dis(e);
+	}
 
 
-        double calculateProbability(vector<double> activations, unsigned int correctLabel){
-            double ex,totalex=0;
-            ex=exp(activations[correctLabel]);
-            for(int i=0;i<10;i++){
-                totalex+=exp(activations[i]);
-            }
-            return ex/(1.0*totalex);
-        }
+public:
 
-        double getLoss(double probability){
-            return -log(probability);
-        }
+	Layer(uint32_t layerSize, uint32_t inputSize) {
+		neurons.reserve(layerSize);
+		generateNeurons(layerSize, inputSize);
+		generateBias();
+	}
+
+	vector<double> biases() {
+		return bias;
+	}
+
+
+
+	uint32_t size() {
+		return neurons.size();
+	}
+
+
+	vector<vector<double>> weights() {
+		int input=neurons[0].weight().size();
+		int neuronCount=neurons.size();
+		vector<vector<double>> weightMatrix(neurons[0].weight().size(),vector<double>(neurons.size()));
+		for (size_t i = 0; i < neurons.size(); ++i)
+			for (size_t j = 0; j < neurons[i].weight().size(); ++j)
+				weightMatrix[j][i] = neurons[i].weight()[j];
+		return weightMatrix;
+	}
+
+	void updatebias(const vector<double>& newbias) {
+		bias = newbias;
+	}
+
+	void updateweights(const vector<vector<double>>& deltaW) {
+		for (size_t i = 0; i < neurons.size(); ++i) {
+			auto wOld = neurons[i].weight();
+			for (size_t j = 0; j < wOld.size(); ++j) {
+				wOld[j] -= deltaW[j][i];
+			}
+			neurons[i].updateW(wOld);
+		}
+	}
+
+	Neuron &operator[](size_t index) {
+		return neurons[index];
+	}
 
 
 };
+
+void Transpose(vector<vector<double>> & Mat) {
+	if (Mat.empty() || Mat[0].empty()) return;
+	vector<vector<double>> Transposed(Mat[0].size(),vector<double> (Mat.size(),0));
+	for(int r=0; r<Mat.size(); r++) {
+		for(int c=0; c<Mat[0].size(); c++) {
+			Transposed[c][r]=Mat[r][c];
+		}
+	}
+	Mat=Transposed;
+}
+
+
+
+vector<vector<double>> MatMul(vector<vector<double>> &A,vector<vector<double>> &B ) {
+	vector<vector<double>> Result(A.size(),vector<double> (B[0].size(),0.0));
+	int first=A.size(),second=A[0].size(),third=B[0].size();
+	for(int i=0; i<first; i++) {
+		for(int j=0; j<third; j++) {
+			for(int k=0; k<second; k++) {
+				Result[i][j]+=(A[i][k]*B[k][j]);
+			}
+		}
+	}
+	return Result;
+}
+
+
+class NeuralNetwork {
+	vector<Layer> model;
+	double lR=1e-2;
+public:
+	NeuralNetwork(uint32_t layers, vector<uint32_t> neuronCount,vector<uint32_t> layerSize) {
+		for (int layer = 0; layer < layers; layer++) {
+			model.emplace_back(neuronCount[layer], layerSize[layer]);
+		}
+
+	}
+
+	vector<vector<int>> labels(int batchSize, int classSize=10) {
+		vector<vector<int>> label;
+		for(int image=currBatch; image<Images.size() && image<currBatch+batchSize; image++) {
+			vector<int> t (classSize,0);
+			t[correctLabel[image]]=1;
+			label.push_back(t);
+		}
+		return label;
+	}
+
+	vector<vector<double>> LayerActivation(vector<vector<double>> Input,Layer layer) {
+		vector<vector<double>> Mat=layer.weights();
+		vector<vector<double>> Result=MatMul(Input,Mat);
+		vector<double> bias=layer.biases();
+		for(int r=0; r<Result.size(); r++) {
+			for(int c=0; c<Result[r].size(); c++) {
+				Result[r][c]+=bias[c];
+			}
+		}
+		return Result;
+	}
+
+	void Relu(vector<vector<double>> &result) {
+		for(int r=0; r<result.size(); r++) {
+			for(int c=0; c<result[r].size(); c++) {
+				result[r][c]=max(0.0,result[r][c]);
+			}
+		}
+	}
+	vector<vector<vector<double>>> FeedForward( int batchSize) {
+		vector<vector<vector<double>>> activations(model.size());
+
+		vector<vector<double>> currInput(batchSize);
+		for (int datapoint = currBatch; datapoint < Images.size() && datapoint < currBatch + batchSize; datapoint++) {
+			currInput[datapoint - currBatch] = Images[datapoint];
+		}
+
+		for (int layer = 0; layer < model.size(); layer++) {
+			currInput = LayerActivation(currInput, model[layer]);
+
+			if (layer != model.size() - 1) {
+				Relu(currInput);
+			}
+			activations[layer] = currInput;
+		}
+
+		return activations;
+	}
+
+
+	vector<double> softmax(vector<double> finalOutput) {
+		vector<double> result(finalOutput.size());
+		double total = 0.0;
+		double maxLogit = *max_element(finalOutput.begin(), finalOutput.end());
+
+		for (double activation : finalOutput) {
+			total += exp(activation - maxLogit);
+		}
+
+		if (total == 0.0) total = 1e-12; 
+
+		for (int i = 0; i < finalOutput.size(); i++) {
+			result[i] = exp(finalOutput[i] - maxLogit) / total;
+		}
+
+		return result;
+	}
+
+
+	vector<vector<double>> Probabilities(vector<vector<double>> outputs) {
+		vector<vector<double>> pred(outputs.size());
+		int i=0;
+		for(vector<double> final: outputs) {
+			pred[i]=softmax(final);
+			i++;
+		}
+		return pred;
+	}
+	vector<vector<double>> cost(vector<vector<double>> predY, vector<vector<int>> trueY) {
+		vector<vector<double>> gradients = predY;
+		for (size_t i = 0; i < gradients.size(); ++i) {
+			for (size_t j = 0; j < gradients[i].size(); ++j) {
+				gradients[i][j] -= trueY[i][j];
+			}
+		}
+		return gradients;
+	}
+	void unitwiseMulti(vector<vector<double>> &result, vector<vector<double>> activations) {
+		for(int r=0; r<result.size(); r++) {
+			for(int c=0; c<result[r].size(); c++) {
+				result[r][c]*=(activations[r][c]>0?1.0:0.0);
+			}
+		}
+	}
+	vector<vector<double>> getError(vector<vector<double>> nextLayerError, int layer, vector<vector<double>> activations) {
+
+		vector<vector<double>> weights=model[layer+1].weights();
+		Transpose(weights);
+		vector<vector<double>> Result=MatMul(nextLayerError,weights);
+		unitwiseMulti(Result,activations);
+		return Result;
+
+	}
+	void UpdateBias(int layer, vector<vector<double>> layerError) {
+		vector<double> biasUpdate(model[layer].size(), 0.0);
+		int batchSize = layerError.size();
+
+		for(int r = 0; r < layerError.size(); r++) {
+			for(int c = 0; c < layerError[0].size(); c++) {
+				biasUpdate[c] += layerError[r][c];
+			}
+		}
+
+		for(int c = 0; c < biasUpdate.size(); c++) {
+			biasUpdate[c] = lR * biasUpdate[c] / batchSize;  
+		}
+
+		vector<double> currentBias = model[layer].biases();
+		for (int i = 0; i < currentBias.size(); i++) {
+			currentBias[i] -= biasUpdate[i];
+		}
+		model[layer].updatebias(currentBias);
+	}
+
+//	void updateLearningRate(int epoch, int totalEpochs) {
+//		double initialLR = 1e-3;
+//		lR = initialLR * (1.0 - (double)epoch / totalEpochs);  // Linear decay
+//		if(lR < 1e-6) lR = 1e-6;  // Minimum learning rate
+//	}
+
+
+	void UpdateWeights(int layer, vector<vector<double>> prevActivations, vector<vector<double>> currError) {
+		Transpose(prevActivations);
+		vector<vector<double>> Result = MatMul(prevActivations, currError);
+		int batchSize = currError.size();
+
+		for(int r = 0; r < Result.size(); r++) {
+			for(int c = 0; c < Result[r].size(); c++) {
+				Result[r][c] *= lR / batchSize; 
+			}
+		}
+		model[layer].updateweights(Result);
+	}
+
+//	void clipGradients(vector<vector<double>> gradients, double maxNorm = 5.0) {
+//		double totalNorm = 0.0;
+//		for(int i = 0; i < gradients.size(); i++) {
+//			for(int j = 0; j < gradients[i].size(); j++) {
+//				totalNorm += gradients[i][j] * gradients[i][j];
+//			}
+//		}
+//		totalNorm = sqrt(totalNorm);
+//
+	//	if(totalNorm > maxNorm) {
+	//		double scale = maxNorm / totalNorm;
+	//		for(int i = 0; i < gradients.size(); i++) {
+	//			for(int j = 0; j < gradients[i].size(); j++) {
+	//				gradients[i][j] *= scale;
+	//			}
+	//		}
+	//	}
+	//}
+
+
+	void backPropagate(int batchSize, const vector<vector<double>> lastLayerError, const vector<vector<vector<double>>>& currActivations){
+		int L = model.size();
+		vector<vector<vector<double>>> errors(L);
+		UpdateBias(L - 1, lastLayerError);
+		vector<vector<double>> prevAct;
+		if (L > 1) {
+			prevAct = currActivations[L - 2];
+		} else {
+			prevAct.resize(batchSize);
+			for (int i = 0; i < batchSize; ++i) {
+				prevAct[i] = Images[currBatch + i];
+			}
+		}
+       // clipGradients(lastLayerError);
+		UpdateWeights(L - 1, prevAct, lastLayerError);
+
+		errors[L - 1] = lastLayerError;
+
+		for (int layer = L - 2; layer >= 0; --layer) {
+			errors[layer] = getError(errors[layer + 1], layer, currActivations[layer]);
+			UpdateBias(layer, errors[layer]);
+            //clipGradients(errors[layer]);
+			if (layer == 0) {
+				vector<vector<double>> inputBatch(batchSize);
+				for (int i = 0; i < batchSize; ++i) {
+					inputBatch[i] = Images[currBatch + i];
+				}
+				UpdateWeights(0, inputBatch, errors[0]);
+			} else {
+				UpdateWeights(layer,currActivations[layer - 1],errors[layer]);
+			}
+		}
+	}
+
+
+	void train(int epochs) {
+		int batch = 64;
+		for (currBatch = 0; currBatch < num; currBatch += batch) {
+			vector<vector<int>> trueY = labels(batch);
+			vector<int> actualLabels(batch);
+			for (int j = 0; j < batch; ++j) {
+				for (int k = 0; k < 10; ++k) {
+					if (trueY[j][k] == 1) {
+						actualLabels[j] = k;
+						break;
+					}
+				}
+			}
+
+			vector<vector<vector<double>>> currActivations = FeedForward(batch);
+			vector<vector<double>> predY = Probabilities(currActivations.back());
+			vector<vector<double>> LastlayerError = cost(predY, trueY);
+
+			backPropagate(batch, LastlayerError, currActivations);
+
+			double totalLoss = 0.0;
+			for (int j = 0; j < predY.size(); ++j) {
+				totalLoss -= log(max(predY[j][actualLabels[j]], 1e-15));
+			}
+			double avgLoss = totalLoss / batch;
+
+			int correct = 0;
+			for (int j = 0; j < predY.size(); ++j) {
+				int predicted = max_element(predY[j].begin(), predY[j].end()) - predY[j].begin();
+				if (predicted == actualLabels[j]) correct++;
+			}
+			double accuracy = (correct * 100.0) / batch;
+
+			cout << "Batch " << (currBatch / batch + 1) << " / " << num/64<< " -> ";
+			cout << "Loss: " << avgLoss << " | Accuracy: " << fixed << setprecision(2) << accuracy << "%\n";
+		}
+        cout<<"CRASH";
+	}
+};
+
+int main() {
+	srand(time(0));
+	input();
+	flattenImage();
+    cout<<num<<endl;
+	NeuralNetwork train(3, {100,50,10}, {784,100,50});
+	train.train(50);
+    cout<<"======Finished training the Neural Network======\n";
+    cout<<"----Maximum Accuracy obtained: "<<MAX_ACCURACY<<" ----";
+}

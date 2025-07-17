@@ -52,12 +52,7 @@ void input() {
 int main(){
     input();
     for(int i=0;i<3;i++){
-        for(int k=0;k<30;k++){
-            for(int j=0;j<30;j++){
-                cout<<image[i][k][j]<<" ";
-            }
-            cout<<endl;
-        }
+        cout<<label[i];
         cout<<"NEXT IMAGE"<<endl;
     };
 }
