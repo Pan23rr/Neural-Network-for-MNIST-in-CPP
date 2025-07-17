@@ -330,13 +330,6 @@ public:
 		model[layer].updatebias(currentBias);
 	}
 
-//	void updateLearningRate(int epoch, int totalEpochs) {
-//		double initialLR = 1e-3;
-//		lR = initialLR * (1.0 - (double)epoch / totalEpochs);  // Linear decay
-//		if(lR < 1e-6) lR = 1e-6;  // Minimum learning rate
-//	}
-
-
 	void UpdateWeights(int layer, vector<vector<double>> prevActivations, vector<vector<double>> currError) {
 		Transpose(prevActivations);
 		vector<vector<double>> Result = MatMul(prevActivations, currError);
@@ -350,24 +343,6 @@ public:
 		model[layer].updateweights(Result);
 	}
 
-//	void clipGradients(vector<vector<double>> gradients, double maxNorm = 5.0) {
-//		double totalNorm = 0.0;
-//		for(int i = 0; i < gradients.size(); i++) {
-//			for(int j = 0; j < gradients[i].size(); j++) {
-//				totalNorm += gradients[i][j] * gradients[i][j];
-//			}
-//		}
-//		totalNorm = sqrt(totalNorm);
-//
-	//	if(totalNorm > maxNorm) {
-	//		double scale = maxNorm / totalNorm;
-	//		for(int i = 0; i < gradients.size(); i++) {
-	//			for(int j = 0; j < gradients[i].size(); j++) {
-	//				gradients[i][j] *= scale;
-	//			}
-	//		}
-	//	}
-	//}
 
 
 	void backPropagate(int batchSize, const vector<vector<double>> lastLayerError, const vector<vector<vector<double>>>& currActivations){
@@ -383,7 +358,6 @@ public:
 				prevAct[i] = Images[currBatch + i];
 			}
 		}
-       // clipGradients(lastLayerError);
 		UpdateWeights(L - 1, prevAct, lastLayerError);
 
 		errors[L - 1] = lastLayerError;
@@ -391,7 +365,6 @@ public:
 		for (int layer = L - 2; layer >= 0; --layer) {
 			errors[layer] = getError(errors[layer + 1], layer, currActivations[layer]);
 			UpdateBias(layer, errors[layer]);
-            //clipGradients(errors[layer]);
 			if (layer == 0) {
 				vector<vector<double>> inputBatch(batchSize);
 				for (int i = 0; i < batchSize; ++i) {
