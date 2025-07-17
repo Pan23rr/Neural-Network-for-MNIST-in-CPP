@@ -49,14 +49,14 @@ data/
 └── t10k-labels.idx1-ubyte
 ```
 
-You can download the dataset from [here](http://fashion-mnist.s3-website.eu-central-1.amazonaws.com/).
+You can download the dataset from [here](https://github.com/zalandoresearch/fashion-mnist/tree/master/data/fashion).
 
 ### 3. ⚙️ Compile and Run
 
 ```bash
 g++ -O2 main.cpp -o neural_net
 ./neural_net
-
+```
 ## 📚 Architecture Overview
 
 The neural network is composed of:
