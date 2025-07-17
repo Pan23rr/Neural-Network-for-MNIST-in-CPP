@@ -115,6 +115,26 @@ Use the provided `saveModel` and `loadModel` functions (work in progress) to:
 
 ---
 
+## 🆚 Output Comparison (C++ vs TensorFlow)
+
+To better appreciate this project’s learning value, here’s a comparison of the accuracy on the same Fashion MNIST dataset:
+
+![CPP accuracy](images/cpp_accuracy.png)
+
+![TF accuracy](images/tf_accuracy.png)
+
+Even though the TensorFlow model performs better overall, the C++ model still produces reasonable predictions. The aim here is to **understand how each prediction is formed internally**, not just achieve the highest accuracy.
+
+---
+
+## 🖼️ Sample Output (Console Logs)
+
+Below is a snapshot of the console during training:
+
+
+![Sample](images/result.png)
+
+
 ## 💡 Notes & Reflections
 
 This project started as a **personal challenge** — to build a neural network from scratch in just a week.
