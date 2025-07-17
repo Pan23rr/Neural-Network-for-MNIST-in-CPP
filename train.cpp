@@ -68,7 +68,7 @@ class Neuron {
 		uint32_t inputs = weights.size();
 		for(uint32_t inp = 0; inp < inputs; inp++) {
 			static std::default_random_engine eng(std::random_device{}());
-			// Better initialization for ReLU networks
+            //He initializations since the normal ones didnt work well
 			uniform_real_distribution<double> dis(-sqrt(2.0 / inputs), sqrt(2.0 / inputs));
 			weights[inp] = dis(eng);
 		}
@@ -208,9 +208,7 @@ public:
 
 	vector<vector<int>> labels(int batchSize, int classSize=10) {
 		vector<vector<int>> label;
-        //if(currBatch>59967) cout<<"REACHED";
 		for(int image=currBatch; image<Images.size() && image<currBatch+batchSize; image++) {
-            //if(image>59967) cout<<"REACHED "<<image<<endl;
 			vector<int> t (classSize,0);
 			t[correctLabel[image]]=1;
 			label.push_back(t);
@@ -384,7 +382,6 @@ public:
 	void train(vector<Layer> &best) {
 		int batch = 64;
 		for (currBatch = 0; currBatch < num; currBatch += batch) {
-            //cout<<"TEST "<<currBatch;
 			vector<vector<int>> trueY = labels(batch);
 			vector<int> actualLabels(trueY.size());
 			for (int j = 0; j < trueY.size(); ++j) {
