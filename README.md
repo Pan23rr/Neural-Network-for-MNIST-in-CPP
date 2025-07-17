@@ -109,7 +109,6 @@ Use the provided `saveModel` and `loadModel` functions (work in progress) to:
 |-------------------|--------------------|------------------|
 | **Accuracy**       | ~85–90%            | ~95–97%          |
 | **Flexibility**    | Low                | High             |
-| **Educational Value** | High           | Medium           |
 | **Reusability**    | Low                | Very High        |
 
 > This project prioritizes **learning over performance**. Unlike frameworks, everything is manually coded to **demystify the internals**.
@@ -138,7 +137,7 @@ After a lot of **messing around with learning rates** and tuning the batch size,
 
 ## 🙏 Credits
 
-- Fashion MNIST Dataset from [Zalando Research](https://github.com/zalandoresearch/fashion-mnist)  
+- Fashion MNIST Dataset from [Zalando Research](https://github.com/zalandoresearch/fashion-mnist/tree/master/data/fashion)  
 - Inspired by educational efforts to deeply understand ML foundations
 
 ---
